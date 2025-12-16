@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>锈齿轮酒馆 · 限时小屋</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0c0e1a;
+      color: #e0d6c9;
+      font-family: "Microsoft Yahei", sans-serif;
+      overflow-x: hidden;
+      height: 100vh;
+      position: relative;
+    }
+    .container {
+      position: relative;
+      z-index: 2;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      margin: 20px 0 15px;
+      font-size: 1.8em;
+      color: #f0e6d2;
+    }
+    .subtitle {
+      font-size: 0.95em;
+      color: #a8b2d1;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+    .principle {
+      background: rgba(20, 25, 45, 0.6);
+      border-radius: 10px;
+      padding: 15px;
+      margin: 20px 0;
+      font-size: 0.9em;
+      line-height: 1.6;
+      text-align: left;
+    }
+    button {
+      background: #5d4a7d;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 30px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 10px;
+    }
+    button:hover { background: #7a62a0; }
+    .hidden { display: none; }
+
+    /* 聊天室样式 */
+    .chat-room {
+      background: rgba(15, 20, 40, 0.8);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      text-align: left;
+    }
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      color: #c0b0a0;
+      font-size: 0.95em;
+    }
+    #messages {
+      height: 200px;
+      overflow-y: auto;
+      background: rgba(10, 12, 25, 0.7);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 0.95em;
+    }
+    .message {
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .message strong { color: #a8b2d1; }
+    .message em { color: #7a82a0; }
+    #msg-input {
+      width: 75%;
+      padding: 8px;
+      background: rgba(20, 22, 40, 0.8);
+      border: 1px solid #4a5070;
+      color: #e0d6c9;
+      border-radius: 4px;
+    }
+    #send-btn {
+      width: 22%;
+      padding: 8px;
+      margin-left: 5px;
+    }
+    .avatar-list {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .avatar {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: #3a325d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      user-select: none;
+      border: 2px solid transparent;
+    }
+    .avatar.selected { border: 2px solid #f0e6d2; }
+  </style>
+</head>
+<body>
+  <div class="container" id="main-view">
+    <h1>🍷 锈齿轮酒馆</h1>
+    <p class="subtitle">今夜，你可以成为任何人，说任何事。<br>这里没有“应该坚强”，只有“我在听”。</p>
+
+    <div class="principle">
+      这里不是避世的桃源，<br>
+      而是现实重压下，一个可以暂时卸下身份的地方。
+    </div>
+
+    <button onclick="showCreateRoom()">🔮 开一间小屋，与旅人同坐片刻</button>
+    <button onclick="showBottles()">🌊 捞起一个漂流瓶</button>
+  </div>
+
+  <!-- 创建房间界面 -->
+  <div class="container hidden" id="create-room-view">
+    <h2>建篱小屋</h2>
+    <p style="margin:15px 0;color:#a8b2d1;">请输入房间主题（如“被裁第3天”）</p>
+    <input type="text" id="room-topic" placeholder="例如：40岁转行，有人吗？" style="width:80%;padding:10px;margin:10px;border-radius:6px;background:#1e233c;color:#e0d6c9;border:1px solid #4a5070;">
+    
+    <p style="margin:15px 0;color:#a8b2d1;">选择你的今晚形象：</p>
+    <div class="avatar-list" id="avatar-select"></div>
+
+    <p style="margin:15px 0;color:#a8b2d1;">设置昵称（非真实姓名）：</p>
+    <input type="text" id="user-nickname" placeholder="如：修钟人、流浪猫" style="width:80%;padding:10px;margin:10px;border-radius:6px;background:#1e233c;color:#e0d6c9;border:1px solid #4a5070;">
+
+    <br>
+    <button onclick="createRoom()">创建小屋</button>
+    <button onclick="backToMain()">返回酒馆</button>
+  </div>
+
+  <!-- 聊天室界面 -->
+  <div class="container hidden" id="chat-room-view">
+    <div class="chat-room">
+      <div class="room-header">
+        <div>小屋：<span id="room-topic-display"></span></div>
+        <div>⏳ <span id="timer">30:00</span></div>
+      </div>
+      <div id="messages"></div>
+      <div style="display:flex;">
+        <input type="text" id="msg-input" placeholder="说点什么吧...（聊完即焚）">
+        <button id="send-btn" onclick="sendMessage()">发送</button>
+      </div>
+      <p style="font-size:0.85em;color:#7a82a0;margin-top:10px;">
+        本屋30分钟后熄灯，所有话语将随烛火消散。
+      </p>
+    </div>
+    <button onclick="leaveRoom()" style="background:#8b3a3a;">离开小屋</button>
+  </div>
+
+  <!-- 漂流瓶 -->
+  <div class="container hidden" id="bottles-view">
+    <h2>心河漂流瓶</h2>
+    <div style="background:rgba(15,20,40,0.6);padding:15px;border-radius:10px;margin:20px 0;text-align:left;">
+      <div class="bottle" style="background:rgba(60,80,120,0.4);padding:10px;margin:10px 0;border-left:3px solid #8a7ca8;cursor:pointer;" 
+           onclick="alert('“被裁那天，我假装去上班，在公园坐了一整天。”\n\n—— 一位匿名的“末班地铁司机”')">“被裁那天，我假装去上班，在公园坐了一整天。”</div>
+      <div class="bottle" style="background:rgba(60,80,120,0.4);padding:10px;margin:10px 0;border-left:3px solid #8a7ca8;cursor:pointer;" 
+           onclick="alert('“40岁学Python，不是为了逆袭，只是不想认输。”\n\n—— 一位匿名的“修钟人”')">“40岁学Python，不是为了逆袭，只是不想认输。”</div>
+    </div>
+    <button onclick="backToMain()">返回酒馆</button>
+  </div>
+
+  <script>
+    // ========== 🔑 请在 Vercel 环境变量中设置以下配置 ==========
+    // 在 Vercel 项目设置中添加：
+    // FIREBASE_API_KEY
+    // FIREBASE_AUTH_DOMAIN
+    // FIREBASE_DATABASE_URL
+    // FIREBASE_PROJECT_ID
+    // FIREBASE_STORAGE_BUCKET
+    // FIREBASE_MESSAGING_SENDER_ID
+    // FIREBASE_APP_ID
+    // =============================================================
+
+    // 从环境变量获取配置（Vercel 构建时会注入）
+    const firebaseConfig = {
+      apiKey: typeof process !== 'undefined' ? process.env.FIREBASE_API_KEY : window.FIREBASE_API_KEY || '{{FIREBASE_API_KEY}}',
+      authDomain: typeof process !== 'undefined' ? process.env.FIREBASE_AUTH_DOMAIN : window.FIREBASE_AUTH_DOMAIN || '{{FIREBASE_AUTH_DOMAIN}}',
+      databaseURL: typeof process !== 'undefined' ? process.env.FIREBASE_DATABASE_URL : window.FIREBASE_DATABASE_URL || '{{FIREBASE_DATABASE_URL}}',
+      projectId: typeof process !== 'undefined' ? process.env.FIREBASE_PROJECT_ID : window.FIREBASE_PROJECT_ID || '{{FIREBASE_PROJECT_ID}}',
+      storageBucket: typeof process !== 'undefined' ? process.env.FIREBASE_STORAGE_BUCKET : window.FIREBASE_STORAGE_BUCKET || '{{FIREBASE_STORAGE_BUCKET}}',
+      messagingSenderId: typeof process !== 'undefined' ? process.env.FIREBASE_MESSAGING_SENDER_ID : window.FIREBASE_MESSAGING_SENDER_ID || '{{FIREBASE_MESSAGING_SENDER_ID}}',
+      appId: typeof process !== 'undefined' ? process.env.FIREBASE_APP_ID : window.FIREBASE_APP_ID || '{{FIREBASE_APP_ID}}'
+    };
+
+    // 检查是否所有配置都已设置
+    const hasValidConfig = Object.values(firebaseConfig).every(value => 
+      value && !value.startsWith('{{') && value !== 'undefined' && value !== ''
+    );
+
+    if (!hasValidConfig) {
+      console.warn("⚠️ Firebase 配置未完全设置，请在 Vercel 环境变量中配置。");
+      // 不初始化 Firebase，后续功能会检查 database 是否存在
+    } else {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    const database = hasValidConfig ? firebase.database() : null;
+
+    // ========== 全局状态 ==========
+    let currentRoomId = null;
+    let currentUser = null;
+    let timerInterval = null;
+    let roomRef = null;
+    let myUserId = null;
+
+    // ========== 卡通头像 ==========
+    const avatars = ['🕰️','🚇','📬','🔧','📜','🌱','🧭','🕯️','📦','📚','⛵','🪵'];
+
+    // ========== 初始化头像选择 ==========
+    function initAvatarSelect() {
+      const container = document.getElementById('avatar-select');
+      container.innerHTML = '';
+      avatars.forEach(emoji => {
+        const div = document.createElement('div');
+        div.className = 'avatar';
+        div.textContent = emoji;
+        div.onclick = () => {
+          document.querySelectorAll('.avatar').forEach(el => el.classList.remove('selected'));
+          div.classList.add('selected');
+          div.dataset.selected = emoji;
+        };
+        container.appendChild(div);
+      });
+      if (container.children[0]) {
+        container.children[0].classList.add('selected');
+        container.children[0].dataset.selected = avatars[0];
+      }
+    }
+
+    // ========== 视图切换 ==========
+    function showCreateRoom() {
+      document.getElementById('main-view').classList.add('hidden');
+      document.getElementById('create-room-view').classList.remove('hidden');
+      initAvatarSelect();
+    }
+
+    function showBottles() {
+      document.getElementById('main-view').classList.add('hidden');
+      document.getElementById('bottles-view').classList.remove('hidden');
+    }
+
+    function backToMain() {
+      document.getElementById('create-room-view').classList.add('hidden');
+      document.getElementById('bottles-view').classList.add('hidden');
+      document.getElementById('chat-room-view').classList.add('hidden');
+      document.getElementById('main-view').classList.remove('hidden');
+      cleanup();
+    }
+
+    function cleanup() {
+      if (timerInterval) clearInterval(timerInterval);
+      if (roomRef && database) {
+        roomRef.off();
+        if (myUserId) {
+          roomRef.child('users').child(myUserId).remove();
+        }
+      }
+      currentRoomId = null;
+      currentUser = null;
+      myUserId = null;
+    }
+
+    // ========== 小屋守则 ==========
+    function showHouseRules() {
+      const rules = `🍷 锈齿轮酒馆 · 小屋守则
+
+这里不是解决问题的地方，
+而是允许脆弱存在的空间。
+
+请遵守：
+1. 不评判、不说教、不追问隐私；
+2. 可倾诉，但不攻击他人；
+3. 若感到不适，请安静离开；
+4. 所有话语，30分钟后随烛火消散。
+
+你无需坚强，
+只需真实。
+
+—— 点“确定”即视为理解并尊重此空间`;
+      if (confirm(rules)) {
+        proceedToChat();
+      } else {
+        backToMain();
+      }
+    }
+
+    // ========== 创建房间 ==========
+    function createRoom() {
+      if (!database) {
+        alert("⚠️ Firebase 未配置，请联系管理员或检查部署设置。");
+        return;
+      }
+      const topic = document.getElementById('room-topic').value.trim();
+      const nickname = document.getElementById('user-nickname').value.trim();
+      const avatarEl = document.querySelector('.avatar.selected');
+      const avatar = avatarEl ? avatarEl.dataset.selected : avatars[0];
+
+      if (!topic || !nickname) {
+        alert("请填写房间主题和昵称");
+        return;
+      }
+
+      currentRoomId = Math.random().toString(36).substr(2, 8);
+      currentUser = { nickname, avatar };
+      showHouseRules();
+    }
+
+    function proceedToChat() {
+      document.getElementById('create-room-view').classList.add('hidden');
+      document.getElementById('chat-room-view').classList.remove('hidden');
+      document.getElementById('room-topic-display').textContent = document.getElementById('room-topic').value;
+      joinRoom();
+    }
+
+    // ========== 加入房间（含5人限制） ==========
+    function joinRoom() {
+      if (!database) {
+        alert("⚠️ Firebase 未配置，无法加入房间。");
+        backToMain();
+        return;
+      }
+      roomRef = database.ref(`rooms/${currentRoomId}`);
+      
+      roomRef.once('value', (snapshot) => {
+        if (!snapshot.exists()) {
+          roomRef.set({ createdAt: Date.now() });
+        }
+      });
+
+      myUserId = database.ref().push().key;
+      const usersRef = roomRef.child('users');
+
+      usersRef.child(myUserId).set({
+        nickname: currentUser.nickname,
+        avatar: currentUser.avatar,
+        joinedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      usersRef.on('value', (snapshot) => {
+        const count = snapshot.numChildren();
+        if (count > 5) {
+          usersRef.child(myUserId).remove();
+          alert("小屋已满（最多5人），请稍后再试或创建新屋。");
+          backToMain();
+          return;
+        }
+        const topic = document.getElementById('room-topic').value;
+        document.getElementById('room-topic-display').textContent = `${topic} (${count}/5)`;
+      });
+
+      roomRef.child('messages').on('child_added', (snapshot) => {
+        const msg = snapshot.val();
+        addMessageToUI(msg);
+      });
+
+      setTimeout(() => {
+        roomRef.child('messages').push({
+          nickname: currentUser.nickname,
+          avatar: currentUser.avatar,
+          text: `${currentUser.avatar} ${currentUser.nickname} 进入了小屋`,
+          time: Date.now(),
+          system: true
+        });
+      }, 300);
+
+      startTimer(30 * 60);
+    }
+
+    // ========== 聊天功能 ==========
+    function sendMessage() {
+      if (!database) return;
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      roomRef.child('messages').push({
+        nickname: currentUser.nickname,
+        avatar: currentUser.avatar,
+        text: text,
+        time: Date.now()
+      });
+      input.value = '';
+    }
+
+    function addMessageToUI(msg) {
+      const messagesDiv = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'message';
+      if (msg.system) {
+        div.innerHTML = `<em>${msg.text}</em>`;
+      } else {
+        div.innerHTML = `<strong>${msg.avatar} ${msg.nickname}:</strong> ${msg.text}`;
+      }
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // ========== 倒计时 ==========
+    function startTimer(seconds) {
+      let total = seconds;
+      updateTimerDisplay(total);
+      timerInterval = setInterval(() => {
+        total--;
+        updateTimerDisplay(total);
+        if (total <= 0) {
+          endRoom();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay(totalSeconds) {
+      const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+      const secs = (totalSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('timer').textContent = `${mins}:${secs}`;
+    }
+
+    function endRoom() {
+      clearInterval(timerInterval);
+      alert("小屋已熄灯，感谢你的陪伴。\n所有话语已随烛火消散。");
+      backToMain();
+    }
+
+    // ========== 离开房间 ==========
+    function leaveRoom() {
+      if (roomRef && currentUser && database) {
+        if (myUserId) {
+          roomRef.child('users').child(myUserId).remove();
+        }
+        roomRef.child('messages').push({
+          nickname: currentUser.nickname,
+          avatar: currentUser.avatar,
+          text: `${currentUser.avatar} ${currentUser.nickname} 离开了小屋`,
+          time: Date.now(),
+          system: true
+        });
+      }
+      backToMain();
+    }
+
+    // ========== 回车发送 ==========
+    document.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !document.getElementById('chat-room-view').classList.contains('hidden')) {
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
