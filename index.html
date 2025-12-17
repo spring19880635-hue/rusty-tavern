@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -125,6 +126,7 @@
   </style>
 </head>
 <body>
+  <!-- （此处省略 HTML 结构，与你原文件完全一致） -->
   <div class="container" id="main-view">
     <h1>🍷 锈齿轮酒馆</h1>
     <p class="subtitle">今夜，你可以成为任何人，说任何事。<br>这里没有“应该坚强”，只有“我在听”。</p>
@@ -186,43 +188,28 @@
     <button onclick="backToMain()">返回酒馆</button>
   </div>
 
+  <!-- ========== 🔑 在此填入你的 Firebase 配置 ========== -->
   <script>
-    // ========== 🔑 请在 Vercel 环境变量中设置以下配置 ==========
-    // 在 Vercel 项目设置中添加：
-    // FIREBASE_API_KEY
-    // FIREBASE_AUTH_DOMAIN
-    // FIREBASE_DATABASE_URL
-    // FIREBASE_PROJECT_ID
-    // FIREBASE_STORAGE_BUCKET
-    // FIREBASE_MESSAGING_SENDER_ID
-    // FIREBASE_APP_ID
-    // =============================================================
+    // 💡 请在此处填入你在 Firebase 控制台看到的真实配置
+    // 登录 https://console.firebase.google.com/ → 你的项目 → Web 应用 → 查看配置
 
-    // 从环境变量获取配置（Vercel 构建时会注入）
     const firebaseConfig = {
-      apiKey: typeof process !== 'undefined' ? process.env.FIREBASE_API_KEY : window.FIREBASE_API_KEY || '{{FIREBASE_API_KEY}}',
-      authDomain: typeof process !== 'undefined' ? process.env.FIREBASE_AUTH_DOMAIN : window.FIREBASE_AUTH_DOMAIN || '{{FIREBASE_AUTH_DOMAIN}}',
-      databaseURL: typeof process !== 'undefined' ? process.env.FIREBASE_DATABASE_URL : window.FIREBASE_DATABASE_URL || '{{FIREBASE_DATABASE_URL}}',
-      projectId: typeof process !== 'undefined' ? process.env.FIREBASE_PROJECT_ID : window.FIREBASE_PROJECT_ID || '{{FIREBASE_PROJECT_ID}}',
-      storageBucket: typeof process !== 'undefined' ? process.env.FIREBASE_STORAGE_BUCKET : window.FIREBASE_STORAGE_BUCKET || '{{FIREBASE_STORAGE_BUCKET}}',
-      messagingSenderId: typeof process !== 'undefined' ? process.env.FIREBASE_MESSAGING_SENDER_ID : window.FIREBASE_MESSAGING_SENDER_ID || '{{FIREBASE_MESSAGING_SENDER_ID}}',
-      appId: typeof process !== 'undefined' ? process.env.FIREBASE_APP_ID : window.FIREBASE_APP_ID || '{{FIREBASE_APP_ID}}'
+    apiKey: "AIzaSyADWeTtSwpeZcX2N9Z09ruI42mIOA6GWkg",
+   authDomain: "rusty-tavern.firebaseapp.com",
+   databaseURL: "https://rusty-tavern-default-rtdb.asia-southeast1.firebasedatabase.app",
+   projectId: "rusty-tavern",
+   storageBucket: "rusty-tavern.firebasestorage.app",
+   messagingSenderId: "48204062260",
+   appId: "1:48204062260:web:f99b5abecb0c7add8cf461"
     };
 
-    // 检查是否所有配置都已设置
-    const hasValidConfig = Object.values(firebaseConfig).every(value => 
-      value && !value.startsWith('{{') && value !== 'undefined' && value !== ''
-    );
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+  </script>
 
-    if (!hasValidConfig) {
-      console.warn("⚠️ Firebase 配置未完全设置，请在 Vercel 环境变量中配置。");
-      // 不初始化 Firebase，后续功能会检查 database 是否存在
-    } else {
-      firebase.initializeApp(firebaseConfig);
-    }
-
-    const database = hasValidConfig ? firebase.database() : null;
-
+  <!-- ========== 原有 JavaScript 功能（保持不变） ========== -->
+  <script>
     // ========== 全局状态 ==========
     let currentRoomId = null;
     let currentUser = null;
@@ -276,7 +263,7 @@
 
     function cleanup() {
       if (timerInterval) clearInterval(timerInterval);
-      if (roomRef && database) {
+      if (roomRef) {
         roomRef.off();
         if (myUserId) {
           roomRef.child('users').child(myUserId).remove();
@@ -313,10 +300,6 @@
 
     // ========== 创建房间 ==========
     function createRoom() {
-      if (!database) {
-        alert("⚠️ Firebase 未配置，请联系管理员或检查部署设置。");
-        return;
-      }
       const topic = document.getElementById('room-topic').value.trim();
       const nickname = document.getElementById('user-nickname').value.trim();
       const avatarEl = document.querySelector('.avatar.selected');
@@ -341,11 +324,6 @@
 
     // ========== 加入房间（含5人限制） ==========
     function joinRoom() {
-      if (!database) {
-        alert("⚠️ Firebase 未配置，无法加入房间。");
-        backToMain();
-        return;
-      }
       roomRef = database.ref(`rooms/${currentRoomId}`);
       
       roomRef.once('value', (snapshot) => {
@@ -395,7 +373,6 @@
 
     // ========== 聊天功能 ==========
     function sendMessage() {
-      if (!database) return;
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
       if (!text) return;
@@ -449,7 +426,7 @@
 
     // ========== 离开房间 ==========
     function leaveRoom() {
-      if (roomRef && currentUser && database) {
+      if (roomRef && currentUser) {
         if (myUserId) {
           roomRef.child('users').child(myUserId).remove();
         }
